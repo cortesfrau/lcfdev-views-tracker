@@ -20,7 +20,7 @@ if (!class_exists('LCFDev_Views_Tracker_Database')) {
         public function __construct()
         {
             global $wpdb;
-            $this->table = $wpdb->prefix . 'lcfdev_views_tracker';
+            $this->table = $wpdb->prefix . 'lcfdev_post_views';
         }
 
         /**

@@ -64,9 +64,14 @@ if (!class_exists('LCFDev_Views_Tracker_Counter')) {
                 return false;
             }
 
+            // Don't track if the user can edit posts
+            if (current_user_can('edit_posts')) {
+                return false;
+            }
+
             // Check if we have a valid post context
             global $post;
-            if (!$post || !isset($post->ID) || !is_single() || !is_singular('post')) {
+            if (!$post || !isset($post->ID)) {
                 return false;
             }
 

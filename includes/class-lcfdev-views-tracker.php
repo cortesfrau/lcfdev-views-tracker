@@ -17,7 +17,7 @@ if (!class_exists('LCFDev_Views_Tracker')) {
          * 
          * @var LCFDev_Views_Tracker_Database
          */
-        public $db;
+        public $database;
 
         /**
          * Tracker
@@ -53,22 +53,14 @@ if (!class_exists('LCFDev_Views_Tracker')) {
          */
         private function __construct()
         {
-            $this->db = new LCFDev_Views_Tracker_Database();
-            $this->tracker = new LCFDev_Views_Tracker_Counter($this->db);
-            $this->query = new LCFDev_Views_Tracker_Query($this->db);
+            // Initialize the classes
+            $this->database = new LCFDev_Views_Tracker_Database();
+            $this->tracker = new LCFDev_Views_Tracker_Counter($this->database);
+            $this->query = new LCFDev_Views_Tracker_Query($this->database);
 
-            register_activation_hook(__FILE__, [$this->db, 'install']);
+            // Install the database
+            register_activation_hook(LCFDEV_VIEWS_TRACKER_FILE, [$this->database, 'install']);
 
-            $this->init_hooks();
-        }
-
-        /**
-         * Get the database
-         * 
-         * @return LCFDev_Views_Tracker_Database
-         */
-        public function init_hooks(): void
-        {
             // Track the view
             add_action('template_redirect', [$this->tracker, 'track_view']);
         }
