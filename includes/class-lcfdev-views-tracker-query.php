@@ -27,7 +27,7 @@ if (!class_exists('LCFDev_Views_Tracker_Query')) {
          * Get the most viewed posts
          * 
          * @param array $args
-         * @return array
+         * @return array Array of WP_Post objects with total_views property added
          */
         public function get_most_viewed(array $args = []): array
         {
@@ -88,8 +88,8 @@ if (!class_exists('LCFDev_Views_Tracker_Query')) {
                 );
             }
 
-            // Build the complete query
-            $base_query = "SELECT p.ID, p.post_title, SUM(v.views) as total_views
+            // Build the complete query to get IDs and view counts
+            $base_query = "SELECT p.ID, SUM(v.views) as total_views
                            FROM {$table} v
                            JOIN {$wpdb->posts} p ON v.post_id = p.ID
                            {$taxonomy_join}
@@ -97,15 +97,40 @@ if (!class_exists('LCFDev_Views_Tracker_Query')) {
                            AND p.post_status = 'publish'
                            {$date_filter}
                            {$taxonomy_filter}
-                           GROUP BY p.ID, p.post_title
+                           GROUP BY p.ID
                            ORDER BY total_views DESC
                            LIMIT %d";
 
             $query = $wpdb->prepare($base_query, $args['post_type'], $args['limit']);
-
             $results = $wpdb->get_results($query);
 
-            return $results ? $results : [];
+            if (empty($results)) {
+                return [];
+            }
+
+            // Extract post IDs and create views lookup array
+            $post_ids = [];
+            $views_lookup = [];
+            foreach ($results as $result) {
+                $post_ids[] = $result->ID;
+                $views_lookup[$result->ID] = $result->total_views;
+            }
+
+            // Get WP_Post objects using get_posts
+            $posts = get_posts([
+                'post__in' => $post_ids,
+                'post_type' => $args['post_type'],
+                'post_status' => 'publish',
+                'numberposts' => -1,
+                'orderby' => 'post__in'
+            ]);
+
+            // Add total_views property to each WP_Post object
+            foreach ($posts as $post) {
+                $post->total_views = $views_lookup[$post->ID] ?? 0;
+            }
+
+            return $posts;
         }
     }
 }
