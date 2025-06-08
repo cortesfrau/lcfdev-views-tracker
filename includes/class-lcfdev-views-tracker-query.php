@@ -13,6 +13,20 @@ if (!class_exists('LCFDev_Views_Tracker_Query')) {
         private $database;
 
         /**
+         * Cache prefix
+         * 
+         * @var string
+         */
+        private string $cache_prefix;
+
+        /**
+         * Cache duration
+         * 
+         * @var int
+         */
+        private int $cache_duration;
+
+        /**
          * Constructor
          * 
          * @param LCFDev_Views_Tracker_Database $database
@@ -21,6 +35,8 @@ if (!class_exists('LCFDev_Views_Tracker_Query')) {
         public function __construct(LCFDev_Views_Tracker_Database $database)
         {
             $this->database = $database;
+            $this->cache_prefix = 'lcfdev_views_tracker_most_viewed_';
+            $this->cache_duration = HOUR_IN_SECONDS;
         }
 
         /**
@@ -31,9 +47,6 @@ if (!class_exists('LCFDev_Views_Tracker_Query')) {
          */
         public function get_most_viewed(array $args = []): array
         {
-            global $wpdb;
-            $table = $this->database->get_table_name();
-
             $defaults = [
                 'post_type' => 'post',
                 'taxonomy' => null,
@@ -48,6 +61,18 @@ if (!class_exists('LCFDev_Views_Tracker_Query')) {
             if ($args['limit'] <= 0) {
                 $args['limit'] = 10;
             }
+
+            // Generate cache key based on all arguments
+            $cache_key = $this->cache_prefix . md5(serialize($args));
+
+            // Check if results are cached
+            $cached_results = get_transient($cache_key);
+            if (false !== $cached_results) {
+                return $cached_results;
+            }
+
+            global $wpdb;
+            $table = $this->database->get_table_name();
 
             // Build date filter
             $date_filter = '';
@@ -122,13 +147,16 @@ if (!class_exists('LCFDev_Views_Tracker_Query')) {
                 'post_type' => $args['post_type'],
                 'post_status' => 'publish',
                 'numberposts' => -1,
-                'orderby' => 'post__in'
+                'orderby' => 'post__in' // Maintain the order from our custom query
             ]);
 
             // Add total_views property to each WP_Post object
             foreach ($posts as $post) {
                 $post->total_views = $views_lookup[$post->ID] ?? 0;
             }
+
+            // Cache the final results
+            set_transient($cache_key, $posts, $this->cache_duration);
 
             return $posts;
         }
